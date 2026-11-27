@@ -33,22 +33,9 @@
   @keyframes bounce{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 8px))}}
   .img-fallback{background:linear-gradient(135deg,#e9dccd,#b58a63)}
   ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#b58a63;border-radius:8px}
-  /* Crowd animation (hero) */
-  .crowd{position:absolute;left:0;right:0;bottom:0;height:9rem;pointer-events:none;overflow:hidden}
-  .crowd::after{content:"";position:absolute;left:0;right:0;bottom:1.1rem;height:1px;background:linear-gradient(90deg,transparent,rgba(240,154,82,.45),transparent)}
-  .walker{position:absolute;bottom:1.1rem;left:-80px;animation:walk-ltr linear infinite}
-  .walker.rtl{animation-name:walk-rtl}
-  .walker.rtl .walker-body{transform:scaleX(-1)}
-  .walker-bob{animation:bob .5s ease-in-out infinite alternate}
-  .walker svg{display:block;overflow:visible}
-  .walker .leg-a,.walker .arm-b{transform-origin:20px 45px;animation:swing .5s ease-in-out infinite alternate}
-  .walker .leg-b,.walker .arm-a{transform-origin:20px 45px;animation:swing .5s ease-in-out infinite alternate-reverse}
-  .walker .arm-a,.walker .arm-b{transform-origin:20px 22px}
-  @keyframes walk-ltr{from{left:-80px}to{left:calc(100% + 80px)}}
-  @keyframes walk-rtl{from{left:calc(100% + 80px)}to{left:-80px}}
-  @keyframes swing{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
-  @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
-  @media (prefers-reduced-motion:reduce){.crowd{display:none}}
+  /* 3D street scene (hero) */
+  .street3d{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 30%);mask-image:linear-gradient(to bottom,transparent,#000 30%)}
+  @media (min-width:1024px){.street3d{-webkit-mask-image:linear-gradient(to right,transparent,#000 24%);mask-image:linear-gradient(to right,transparent,#000 24%)}}
 </style>
 </head>
 <body class="font-sans antialiased">
@@ -99,7 +86,7 @@
 <section class="relative min-h-[100svh] flex items-center pt-16 overflow-hidden bg-wood-900">
   <img src="https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=1920&q=80" alt="金黃酥脆的鍋貼" class="absolute inset-0 w-full h-full object-cover opacity-45" onerror="this.style.display='none'">
   <div class="absolute inset-0 bg-gradient-to-r from-wood-900 via-wood-900/70 to-transparent"></div>
-  <div id="crowd" class="crowd" aria-hidden="true"></div>
+  <div id="street3d" class="street3d absolute inset-x-0 bottom-0 h-[58%] opacity-50 lg:opacity-100 lg:left-auto lg:top-0 lg:w-[64%] lg:h-full pointer-events-none" aria-hidden="true"></div>
   <div class="relative max-w-7xl mx-auto px-4 lg:px-8 py-20 w-full">
     <p class="inline-flex items-center gap-2 text-ember-400 tracking-[.3em] text-xs sm:text-sm mb-6"><span class="w-10 h-px bg-ember-400"></span>SINCE 1995 · 現包現煎</p>
     <h1 class="font-serif font-black text-cream text-4xl sm:text-5xl lg:text-7xl leading-tight max-w-3xl">金黃酥脆，<br>傳承手藝的<span class="text-ember-400">極致美味</span></h1>
@@ -625,33 +612,257 @@ function hidePoster(){ const m=document.getElementById('poster-modal'); if(!m) r
   $('#poster-close').onclick = hidePoster;
   m.addEventListener('click', e=>{ if(e.target.id==='poster-modal') hidePoster(); }); })();
 
-/* Crowd animation: people walking past the shop */
-(function(){
-  const box = $('#crowd'); if(!box) return;
-  const colors = ['#faf4e8','#e9dccd','#b58a63','#f09a52','#e9dccd','#7a4b2b'];
-  const person = (c, bag) => `<svg width="40" height="80" viewBox="0 0 40 80" fill="${c}">
-    <rect class="arm-a" x="17.5" y="20" width="5" height="22" rx="2.5"/>
-    <rect class="leg-a" x="17" y="44" width="6" height="32" rx="3"/>
-    <rect class="leg-b" x="17" y="44" width="6" height="32" rx="3"/>
-    <rect x="13" y="18" width="14" height="30" rx="6"/>
-    <circle cx="20" cy="9" r="7"/>
-    <g class="arm-b"><rect x="17.5" y="20" width="5" height="22" rx="2.5"/>${bag?'<rect x="14" y="40" width="13" height="10" rx="2" fill="#e07a2f"/>':''}</g>
-  </svg>`;
-  const n = window.innerWidth < 640 ? 7 : 14;
-  for(let i=0;i<n;i++){
-    const w = document.createElement('div');
-    const scale = (0.55 + Math.random()*0.6).toFixed(2), dur = (14 + Math.random()*16).toFixed(1);
-    w.className = 'walker' + (Math.random()<.5 ? ' rtl' : '');
-    w.style.animationDuration = dur + 's';
-    w.style.animationDelay = (-Math.random()*dur).toFixed(1) + 's';
-    w.style.opacity = (0.35 + scale*0.45).toFixed(2);
-    w.style.zIndex = Math.round(scale*10);
-    w.innerHTML = `<div class="walker-body" style="transform-origin:bottom"><div class="walker-bob" style="zoom:${scale}">${person(colors[i%colors.length], Math.random()<.4)}</div></div>`;
-    box.appendChild(w);
-  }
-})();
-
 renderCart(); icons();
+</script>
+<!-- ================= 3D street scene: people walking by and into the shop ================= -->
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const host = document.getElementById('street3d');
+if (host) { try { initStreet(host); } catch (e) { console.warn('3D street disabled:', e); host.remove(); } }
+
+function initStreet(host){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hero = host.closest('section');
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x2b1a0f, 22, 48);
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 120);
+  const target = new THREE.Vector3(2.2, 1.7, 0.5);
+  const camDir = new THREE.Vector3(0.42, 0.3, 1).normalize();
+  let camDist = 18, spawnHalf = 16;
+
+  const M = (c, o={}) => new THREE.MeshStandardMaterial({ color:c, roughness:.85, flatShading:true, ...o });
+  const glow = (c, i=1) => M(c, { emissive:c, emissiveIntensity:i });
+  const add = (geo, mat, x, y, z, cast=true) => { const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = cast; m.receiveShadow = true; scene.add(m); return m; };
+  const box = (w,h,d, mat, x,y,z, cast=true) => add(new THREE.BoxGeometry(w,h,d), mat, x,y,z, cast);
+
+  /* ---------- Lights ---------- */
+  scene.add(new THREE.HemisphereLight(0x9a8fb0, 0x3a2414, 0.9));
+  const moon = new THREE.DirectionalLight(0xc8d0ff, 0.9);
+  moon.position.set(-8, 14, 12); moon.castShadow = true;
+  moon.shadow.mapSize.set(1024, 1024);
+  Object.assign(moon.shadow.camera, { left:-16, right:16, top:12, bottom:-8, near:1, far:45 });
+  scene.add(moon);
+
+  /* ---------- Ground ---------- */
+  box(80, .2, 4.6, M(0xb8a284), 2, -.1, 2.3, false);           // sidewalk
+  box(80, .25, .3, M(0x8f7a60), 2, -.05, 4.7, false);          // curb
+  box(80, .1, 16, M(0x3a2b22), 2, -.2, 12.8, false);           // road
+  for (let x = -30; x <= 34; x += 3.2) box(1.5, .02, .16, M(0xd9c7a5), x, -.14, 8.5, false);
+  for (let x = -30; x <= 34; x += 1.1) box(1.06, .01, .02, M(0x9c8668), x, .005, 2.3, false); // paving joints
+
+  /* ---------- Shop "金脆坊" (front face at z=0, spans x -2..6) ---------- */
+  const wallM = M(0x7a4b2b), trimM = M(0x4a2c1a);
+  const DOOR_X = 3.4, DOOR_W = 1.6, DOOR_H = 2.6, H = 5;
+  const leftW = (DOOR_X - DOOR_W/2) - (-2), rightW = 6 - (DOOR_X + DOOR_W/2);
+  box(leftW, H, .3, wallM, -2 + leftW/2, H/2, -.15);
+  box(rightW, H, .3, wallM, 6 - rightW/2, H/2, -.15);
+  box(DOOR_W, H-DOOR_H, .3, wallM, DOOR_X, DOOR_H + (H-DOOR_H)/2, -.15);
+  box(.3, H, 4, wallM, -1.85, H/2, -2.1);                        // sides, back, roof
+  box(.3, H, 4, wallM, 5.85, H/2, -2.1);
+  box(8, H, .3, M(0xf0d2a8, { emissive:0xff9a40, emissiveIntensity:.35 }), 2, H/2, -3.95);
+  box(8.6, .35, 4.6, trimM, 2, H + .17, -2);
+  box(7.6, .05, 3.7, M(0x8a5a36), 2, .03, -2, false);           // floor
+  box(3, 1.05, .7, trimM, DOOR_X - .6, .52, -3.1);              // counter
+  box(3, .08, .8, M(0xe9dccd), DOOR_X - .6, 1.08, -3.1);
+  for (let i = 0; i < 4; i++) box(.34, .12, .34, M(0xe07a2f), DOOR_X - 1.7 + i*.7, 1.18, -3.1); // gyoza trays
+  // door frame
+  box(.16, DOOR_H, .4, trimM, DOOR_X - DOOR_W/2 - .08, DOOR_H/2, .02);
+  box(.16, DOOR_H, .4, trimM, DOOR_X + DOOR_W/2 + .08, DOOR_H/2, .02);
+  box(DOOR_W + .32, .16, .4, trimM, DOOR_X, DOOR_H + .08, .02);
+  // shop window (glowing) + frame + silhouettes inside
+  box(3, 1.7, .06, glow(0xffc27a, 1.1), .45, 1.95, .04, false);
+  box(3.2, .14, .2, trimM, .45, 1.06, .08); box(3.2, .14, .2, trimM, .45, 2.84, .08);
+  box(.12, 1.8, .2, trimM, -1.1, 1.95, .08); box(.12, 1.8, .2, trimM, 2.0, 1.95, .08); box(.1, 1.8, .16, trimM, .45, 1.95, .08);
+  box(3.4, .12, .5, trimM, .45, .98, .25);                      // sill
+  // awning stripes
+  for (let i = 0; i < 10; i++) {
+    const s = box(.79, .07, 1.35, M(i % 2 ? 0xfaf4e8 : 0xe07a2f), -1.55 + i*.79 + .4, 3.32, .62);
+    s.rotation.x = .38;
+    box(.79, .26, .05, M(i % 2 ? 0xfaf4e8 : 0xe07a2f), -1.55 + i*.79 + .4, 2.98, 1.26);
+  }
+  // sign with canvas text
+  const sc = document.createElement('canvas'); sc.width = 1024; sc.height = 192;
+  const signTex = new THREE.CanvasTexture(sc); signTex.colorSpace = THREE.SRGBColorSpace; signTex.anisotropy = 4;
+  const drawSign = () => {
+    const g = sc.getContext('2d');
+    g.fillStyle = '#2b1a0f'; g.fillRect(0, 0, 1024, 192);
+    g.strokeStyle = '#f09a52'; g.lineWidth = 6; g.strokeRect(14, 14, 996, 164);
+    g.fillStyle = '#f6b26b'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '900 112px "Noto Serif TC", serif'; g.fillText('金脆坊', 400, 100);
+    g.fillStyle = '#e9dccd'; g.font = '500 48px "Noto Sans TC", sans-serif'; g.fillText('鍋貼專賣', 780, 104);
+    signTex.needsUpdate = true;
+  };
+  drawSign(); document.fonts?.ready.then(drawSign);
+  const signFace = M(0xffffff, { map:signTex, emissive:0xffffff, emissiveMap:signTex, emissiveIntensity:.75, flatShading:false });
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(5.6, 1.05, .14), [trimM, trimM, trimM, trimM, signFace, trimM]);
+  sign.position.set(2, 4.25, .1); scene.add(sign);
+  // lanterns
+  const lanterns = [];
+  for (const dx of [-1.15, 1.15]) {
+    box(.03, .35, .03, trimM, DOOR_X + dx, 2.86, .45, false);
+    const l = add(new THREE.SphereGeometry(.24, 12, 10), glow(0xff5a2a, 1.6), DOOR_X + dx, 2.55, .45, false);
+    l.scale.y = 1.25; lanterns.push(l);
+    box(.2, .06, .2, M(0x2b1a0f), DOOR_X + dx, 2.86, .45, false);
+  }
+  const inside = new THREE.PointLight(0xffa860, 22, 9, 1.6); inside.position.set(DOOR_X - .5, 2.4, -1.8); scene.add(inside);
+  const porch = new THREE.PointLight(0xff9a50, 16, 8, 1.6); porch.position.set(DOOR_X - 1, 2.6, 1.4); scene.add(porch);
+  // potted plants
+  for (const x of [-1.6, 5.6]) {
+    box(.55, .5, .55, M(0x5a3a24), x, .25, .55);
+    add(new THREE.IcosahedronGeometry(.42, 0), M(0x4f7a45), x, .82, .55).scale.y = 1.2;
+  }
+
+  /* ---------- Street lamp ---------- */
+  add(new THREE.CylinderGeometry(.07, .1, 4, 8), M(0x2b2420), -3.6, 2, 4.2);
+  box(.9, .07, .07, M(0x2b2420), -3.2, 3.95, 4.2);
+  add(new THREE.SphereGeometry(.2, 12, 10), glow(0xffe2a8, 2), -2.8, 3.82, 4.2, false);
+  const lampL = new THREE.PointLight(0xffd59a, 14, 9, 1.6); lampL.position.set(-2.8, 3.6, 4.2); scene.add(lampL);
+
+  /* ---------- Neighbouring buildings ---------- */
+  const neighbour = (x, w, h, c) => {
+    box(w, h, 4, M(c), x, h/2, -2.4);
+    box(w + .3, .3, 4.3, M(0x2b1a0f), x, h + .15, -2.4);
+    for (let fy = 1.6; fy < h - .8; fy += 1.5)
+      for (let fx = x - w/2 + .9; fx < x + w/2 - .5; fx += 1.25)
+        box(.7, .9, .06, Math.random() < .55 ? glow(0xffcf8a, .9) : M(0x1f140c), fx, fy, -.37, false);
+  };
+  neighbour(-5.3, 6, 6.6, 0x4a3322);
+  neighbour(9.3, 6.2, 7.6, 0x553a26);
+  neighbour(-11.6, 6, 8.2, 0x3e2a1c);
+  neighbour(15.8, 6.4, 6.2, 0x47301f);
+
+  /* ---------- People ---------- */
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const SHIRTS = [0xe07a2f, 0xfaf4e8, 0x4a6a8a, 0xc94f4f, 0x5d7a55, 0xd9b26a, 0x7a5a9a, 0x3d3d4a, 0xb58a63];
+  const PANTS = [0x2f2f3a, 0x4a3a2a, 0x3b4a5c, 0x6b5a4a, 0x1f2430];
+  const SKIN = [0xf1c9a5, 0xd9a77f, 0xb07a55, 0x8a5a3c];
+  const HAIR = [0x1e1410, 0x3b2a1e, 0x6b4a2a, 0x2a2a2a, 0x9a9a9a];
+  const geo = {
+    leg: new THREE.BoxGeometry(.17, .86, .2), torso: new THREE.CylinderGeometry(.21, .25, .78, 8),
+    head: new THREE.SphereGeometry(.17, 12, 10), hair: new THREE.SphereGeometry(.18, 12, 8, 0, Math.PI*2, 0, Math.PI/2),
+    arm: new THREE.BoxGeometry(.12, .66, .14), bag: new THREE.BoxGeometry(.32, .22, .24)
+  };
+  const people = [];
+  const limb = (parent, g, mat, px, py, oy) => {
+    const pivot = new THREE.Group(); pivot.position.set(px, py, 0); parent.add(pivot);
+    const m = new THREE.Mesh(g, mat); m.position.y = oy; m.castShadow = true; pivot.add(m);
+    return pivot;
+  };
+  function makePerson(withBag){
+    const root = new THREE.Group(), rig = new THREE.Group(); root.add(rig);
+    const shirt = M(pick(SHIRTS)), pants = M(pick(PANTS)), skin = M(pick(SKIN)), hair = M(pick(HAIR));
+    const legs = [limb(rig, geo.leg, pants, -.11, .88, -.43), limb(rig, geo.leg, pants, .11, .88, -.43)];
+    const torso = new THREE.Mesh(geo.torso, shirt); torso.position.y = 1.26; torso.castShadow = true; rig.add(torso);
+    const head = new THREE.Mesh(geo.head, skin); head.position.y = 1.83; head.castShadow = true; rig.add(head);
+    const hr = new THREE.Mesh(geo.hair, hair); hr.position.y = 1.85; rig.add(hr);
+    const arms = [limb(rig, geo.arm, shirt, -.31, 1.6, -.31), limb(rig, geo.arm, shirt, .31, 1.6, -.31)];
+    if (withBag) { const b = new THREE.Mesh(geo.bag, M(0xe07a2f)); b.position.set(0, -.72, .02); b.castShadow = true; arms[1].add(b); }
+    root.scale.setScalar(rnd(.88, 1.08));
+    scene.add(root);
+    return { root, rig, legs, arms, bag:withBag, phase:Math.random()*6, speed:rnd(1.1, 1.7), path:[] };
+  }
+  function spawn(){
+    const r = Math.random(), lane = rnd(.9, 3.8);
+    const fromLeft = Math.random() < .5, sx = target.x + (fromLeft ? -spawnHalf : spawnHalf), ex = target.x + (fromLeft ? spawnHalf : -spawnHalf);
+    const doorJit = rnd(-.25, .25);
+    let p;
+    if (r < .32) {                                   // walk into the shop
+      p = makePerson(false);
+      p.root.position.set(sx, 0, lane);
+      p.path = [{x:DOOR_X + doorJit + (fromLeft ? -.6 : .6), z:lane}, {x:DOOR_X + doorJit, z:.9}, {x:DOOR_X + doorJit*.4, z:-1}, {x:DOOR_X - 2.4, z:-1.3}];
+    } else if (r < .52) {                            // come out with a takeaway bag
+      p = makePerson(true);
+      p.root.position.set(DOOR_X - 2.4, 0, -1.3);
+      p.path = [{x:DOOR_X + doorJit*.4, z:-1}, {x:DOOR_X + doorJit, z:.9}, {x:DOOR_X + (fromLeft ? .6 : -.6), z:lane}, {x:sx, z:lane}];
+    } else {                                         // just passing by
+      p = makePerson(Math.random() < .25);
+      p.root.position.set(sx, 0, lane);
+      p.path = [{x:ex, z:lane}];
+    }
+    const wp = p.path[0]; p.root.rotation.y = Math.atan2(wp.x - p.root.position.x, wp.z - p.root.position.z);
+    people.push(p);
+  }
+  function removePerson(i){
+    const p = people[i]; scene.remove(p.root);
+    p.root.traverse(o => { if (o.isMesh) o.material.dispose(); });
+    people.splice(i, 1);
+  }
+  function stepPerson(p, dt){
+    const wp = p.path[0]; if (!wp) return false;
+    const pos = p.root.position, dx = wp.x - pos.x, dz = wp.z - pos.z, d = Math.hypot(dx, dz), st = p.speed * dt;
+    if (d <= st) { pos.x = wp.x; pos.z = wp.z; p.path.shift(); }
+    else { pos.x += dx/d*st; pos.z += dz/d*st; }
+    if (d > .01) {
+      const want = Math.atan2(dx, dz);
+      let diff = (want - p.root.rotation.y) % (Math.PI*2);
+      if (diff > Math.PI) diff -= Math.PI*2; if (diff < -Math.PI) diff += Math.PI*2;
+      p.root.rotation.y += diff * Math.min(1, dt * 7);
+    }
+    p.phase += dt * p.speed * 5.2;
+    const s = Math.sin(p.phase);
+    p.legs[0].rotation.x = s * .55; p.legs[1].rotation.x = -s * .55;
+    p.arms[0].rotation.x = -s * .45; p.arms[1].rotation.x = s * (p.bag ? .12 : .45);
+    p.rig.position.y = Math.abs(Math.cos(p.phase)) * .05;
+    return true;
+  }
+
+  /* ---------- Loop ---------- */
+  const target_n = innerWidth < 1024 ? 7 : 12;
+  let spawnT = 0;
+  function simulate(dt){
+    spawnT -= dt;
+    if (spawnT <= 0 && people.length < target_n) { spawn(); spawnT = rnd(.5, 1.6); }
+    for (let i = people.length - 1; i >= 0; i--) if (!stepPerson(people[i], dt)) removePerson(i);
+  }
+  function resize(){
+    const w = host.clientWidth || 1, h = host.clientHeight || 1, aspect = w / h;
+    renderer.setSize(w, h, false);
+    camera.aspect = aspect;
+    const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    camDist = THREE.MathUtils.clamp(8 / (t * Math.min(aspect, 1.9)), 16, 30);
+    spawnHalf = t * camDist * aspect + 3;
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(host); resize();
+
+  const pointer = { x:0, y:0 }, cam = { x:0, y:0 };
+  hero?.addEventListener('pointermove', e => {
+    const r = hero.getBoundingClientRect();
+    pointer.x = (e.clientX - r.left) / r.width * 2 - 1; pointer.y = (e.clientY - r.top) / r.height * 2 - 1;
+  });
+  function placeCamera(t){
+    cam.x += (pointer.x - cam.x) * .04; cam.y += (pointer.y - cam.y) * .04;
+    camera.position.copy(target).addScaledVector(camDir, camDist);
+    camera.position.x += cam.x * 1.2 + Math.sin(t * .00015) * .6;
+    camera.position.y += -cam.y * .5;
+    camera.lookAt(target);
+  }
+
+  for (let i = 0; i < 400; i++) simulate(.1);        // pre-populate the street
+  let visible = true, last = performance.now();
+  if (hero) new IntersectionObserver(([en]) => { visible = en.isIntersecting; last = performance.now(); }).observe(hero);
+
+  if (reduce) { placeCamera(0); renderer.render(scene, camera); return; }
+  renderer.setAnimationLoop(now => {
+    if (!visible || document.hidden) { last = now; return; }
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    simulate(dt);
+    lanterns.forEach((l, i) => { l.rotation.z = Math.sin(now * .0012 + i) * .08; });
+    placeCamera(now);
+    renderer.render(scene, camera);
+  });
+}
 </script>
 </body>
 </html>
