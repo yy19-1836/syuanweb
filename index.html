@@ -304,13 +304,15 @@
         <div class="flex justify-between text-wood-500"><span>運費</span><span id="co-ship"></span></div>
         <div class="flex justify-between font-bold text-wood-700 text-base pt-2 border-t border-wood-100"><span>應付總額</span><span id="co-total" class="text-ember-600"></span></div>
       </div>
-      <button class="mt-6 w-full bg-ember-500 hover:bg-ember-600 text-white py-3.5 rounded-full font-medium transition">送出訂單</button>
+      <input type="text" name="website" id="f-website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true">
+      <p id="co-error" class="hidden mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3" role="alert"></p>
+      <button id="co-submit" class="mt-6 w-full bg-ember-500 hover:bg-ember-600 disabled:opacity-60 disabled:cursor-wait text-white py-3.5 rounded-full font-medium transition inline-flex items-center justify-center gap-2">送出訂單</button>
     </form>
     <!-- Success step -->
     <div id="checkout-success" class="hidden p-8 text-center">
       <div class="w-20 h-20 mx-auto rounded-full bg-ember-500/15 grid place-items-center"><i data-lucide="check" class="w-10 h-10 text-ember-600"></i></div>
       <h2 class="font-serif font-bold text-2xl text-wood-700 mt-6">訂單已建立</h2>
-      <p class="text-wood-500 mt-2 text-sm">感謝您的訂購！確認信已寄至 <span id="ok-email" class="font-medium"></span></p>
+      <p id="ok-msg" class="text-wood-500 mt-2 text-sm">感謝您的訂購！確認信已寄至 <span id="ok-email" class="font-medium"></span></p>
       <div class="bg-white rounded-xl p-4 mt-6 text-sm text-left space-y-2 border border-wood-100">
         <div class="flex justify-between"><span class="text-wood-500">訂單編號</span><span id="ok-id" class="font-mono font-bold"></span></div>
         <div class="flex justify-between"><span class="text-wood-500">取餐方式</span><span id="ok-method"></span></div>
@@ -401,6 +403,8 @@ const FAQS = [
   ['宅配運費怎麼算？','宅配運費 NT$150，單筆滿 NT$1,000 免運；冷凍商品將以低溫物流配送，通常 1–2 個工作天送達。']
 ];
 const SHIP = {dinein:0, takeout:0, delivery:150}, FREE_SHIP = 1000;
+/* Google Apps Script 訂單 API：部署 gas/Code.gs 後，把「網頁應用程式網址」貼在這裡（留空 = 示範模式，不會真的送出） */
+const ORDER_API = '';
 const METHOD_NAME = {dinein:'內用', takeout:'外帶', delivery:'宅配'};
 
 /* ================= Helpers ================= */
@@ -580,12 +584,43 @@ $('#checkout-btn').onclick = openCheckout;
 $$('.co-close').forEach(b=>b.onclick = closeCheckout);
 modal.addEventListener('click', e=>{ if(e.target===modal) closeCheckout(); });
 $('#method-group').addEventListener('change', updateTotals);
-$('#checkout-form').addEventListener('submit', e=>{
+function showCoError(msg){ const el=$('#co-error'); el.textContent=msg; el.classList.toggle('hidden', !msg); }
+async function sendOrder(payload){
+  if(!ORDER_API){ // 示範模式
+    await new Promise(r=>setTimeout(r,600));
+    const sub = subtotal(), sh = shipping(payload.method);
+    return { ok:true, demo:true, orderId:'JCF' + new Date().toISOString().slice(2,10).replace(/-/g,'') + '-' + Math.floor(100+Math.random()*900), total:sub+sh, emailSent:false };
+  }
+  const ctrl = new AbortController(), timer = setTimeout(()=>ctrl.abort(), 25000);
+  try {
+    // 不設定 Content-Type（預設 text/plain），避免 CORS 預檢，Apps Script 才能正常接收
+    const res = await fetch(ORDER_API, { method:'POST', body:JSON.stringify(payload), signal:ctrl.signal, redirect:'follow' });
+    return await res.json();
+  } finally { clearTimeout(timer); }
+}
+$('#checkout-form').addEventListener('submit', async e=>{
   e.preventDefault();
-  const m = getMethod(), total = subtotal()+shipping(m);
-  const id = 'JCF' + new Date().toISOString().slice(2,10).replace(/-/g,'') + Math.floor(1000+Math.random()*9000);
-  $('#ok-id').textContent = id; $('#ok-email').textContent = $('#f-email').value;
-  $('#ok-method').textContent = METHOD_NAME[m]; $('#ok-total').textContent = money(total);
+  const btn = $('#co-submit'); if(btn.disabled) return;
+  const m = getMethod();
+  const payload = {
+    method: m, source: matchMedia('(display-mode: standalone)').matches ? 'pwa' : 'web', website: $('#f-website').value,
+    customer: { name:$('#f-name').value.trim(), phone:$('#f-phone').value.trim(), email:$('#f-email').value.trim(),
+                address: m==='delivery' ? $('#f-addr').value.trim() : '', note:$('#f-note').value.trim() },
+    items: Object.entries(cart).map(([id,qty])=>({ id, qty, name:findItem(id).name, price:findItem(id).price })),
+    clientTotal: subtotal() + shipping(m)
+  };
+  showCoError(''); btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>送出中…'; icons();
+  let r;
+  try { r = await sendOrder(payload); }
+  catch(err){ r = { ok:false, error: err.name==='AbortError' ? '連線逾時，請檢查網路後再試一次。' : '網路連線失敗，請稍後再試或來電門市。' }; }
+  btn.disabled = false; btn.textContent = '送出訂單';
+  if(!r || !r.ok){ showCoError((r && r.error) || '訂單送出失敗，請稍後再試。'); return; }
+  $('#ok-id').textContent = r.orderId;
+  $('#ok-email').textContent = payload.customer.email;
+  $('#ok-msg').innerHTML = r.demo ? '目前為<b>示範模式</b>，訂單未實際送出。'
+    : (r.emailSent ? '感謝您的訂購！確認信已寄至 <span class="font-medium"></span>' : '感謝您的訂購！我們已收到您的訂單。');
+  const em = $('#ok-msg span'); if(em) em.textContent = payload.customer.email;
+  $('#ok-method').textContent = METHOD_NAME[m]; $('#ok-total').textContent = money(r.total);
   $('#ok-eta').textContent = m==='delivery' ? '約 1–2 個工作天' : '約 15–20 分鐘';
   cart = {}; save(); renderCart();
   $('#checkout-form').reset();
