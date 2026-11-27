@@ -1,0 +1,23 @@
+{
+  "name": "金脆坊 鍋貼專賣",
+  "short_name": "金脆坊",
+  "description": "三十年老店技術，現包現煎的鍋貼專賣店，提供線上點餐、冷凍禮盒與線上預約。",
+  "lang": "zh-TW",
+  "id": "./",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf4e8",
+  "theme_color": "#2b1a0f",
+  "categories": ["food", "shopping"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "線上點餐", "url": "./#order", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "門市據點", "url": "./#locations", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

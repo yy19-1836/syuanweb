@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>金脆坊 鍋貼專賣｜金黃酥脆，傳承手藝的極致美味</title>
 <meta name="description" content="金脆坊：三十年老店技術，現包現煎的極簡現代鍋貼專賣店，提供線上點餐與冷凍禮盒。">
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2b1a0f">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="金脆坊">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
@@ -61,6 +71,9 @@
       <a href="#contact" class="hover:text-ember-500 transition">聯絡我們</a>
     </nav>
     <div class="flex items-center gap-2 sm:gap-3">
+      <button id="install-btn" class="hidden items-center gap-1.5 border border-wood-300 text-wood-700 hover:bg-wood-700 hover:text-cream px-3 py-1.5 rounded-full text-sm transition" aria-label="安裝金脆坊 App">
+        <i data-lucide="download" class="w-4 h-4"></i><span>安裝 App</span>
+      </button>
       <button id="cart-btn" class="relative p-2 rounded-full hover:bg-wood-100 transition" aria-label="開啟購物車">
         <i data-lucide="shopping-bag" class="w-6 h-6 text-wood-700"></i>
         <span id="cart-badge" class="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 rounded-full bg-ember-500 text-white text-xs font-bold grid place-items-center">0</span>
@@ -611,6 +624,17 @@ function hidePoster(){ const m=document.getElementById('poster-modal'); if(!m) r
 (function(){ const m=$('#poster-modal'); if(!m) return; m.classList.remove('hidden'); m.classList.add('flex');
   $('#poster-close').onclick = hidePoster;
   m.addEventListener('click', e=>{ if(e.target.id==='poster-modal') hidePoster(); }); })();
+
+/* PWA: service worker + install button */
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW register failed', err)));
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; const b = $('#install-btn'); b.classList.remove('hidden'); b.classList.add('inline-flex'); });
+$('#install-btn').addEventListener('click', async () => {
+  if (!installEvt) return;
+  installEvt.prompt(); await installEvt.userChoice; installEvt = null;
+  const b = $('#install-btn'); b.classList.add('hidden'); b.classList.remove('inline-flex');
+});
+addEventListener('appinstalled', () => toast('已安裝金脆坊 App，可從主畫面開啟！'));
 
 renderCart(); icons();
 </script>
