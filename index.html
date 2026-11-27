@@ -314,6 +314,18 @@
   <span class="relative font-medium tracking-wider text-sm">立即預約</span>
 </a>
 
+<!-- ================= Poster Popup ================= -->
+<div id="poster-modal" class="fixed inset-0 z-[85] hidden items-center justify-center p-4 bg-black/70" role="dialog" aria-modal="true" aria-label="活動海報">
+  <div class="relative fade-in">
+    <button id="poster-close" class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-cream text-wood-700 hover:bg-ember-500 hover:text-cream shadow-lg grid place-items-center transition" aria-label="關閉海報">
+      <i data-lucide="x" class="w-5 h-5"></i>
+    </button>
+    <img src="https://i.postimg.cc/j2YmMLV1/Chat-GPT-Image-2026nian8yue9ri-xia-wu06-20-57.png" alt="活動海報"
+         class="block max-w-[92vw] max-h-[85vh] w-auto h-auto object-contain rounded-2xl shadow-2xl"
+         onerror="this.closest('#poster-modal').remove()">
+  </div>
+</div>
+
 <!-- ================= Info Modal (privacy / terms) ================= -->
 <div id="info-modal" class="fixed inset-0 z-[75] hidden items-center justify-center p-4 bg-black/60">
   <div class="bg-cream max-w-md w-full rounded-3xl p-8 shadow-2xl">
@@ -577,7 +589,7 @@ $('#privacy-link').onclick = e=>{ e.preventDefault(); showInfo('privacy'); };
 $('#terms-link').onclick = e=>{ e.preventDefault(); showInfo('terms'); };
 const hideInfo = ()=>{ const m=$('#info-modal'); m.classList.add('hidden'); m.classList.remove('flex'); };
 $('#info-close').onclick = hideInfo; $('#info-modal').addEventListener('click', e=>{ if(e.target.id==='info-modal') hideInfo(); });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeDrawer(); closeCheckout(); hideInfo(); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeDrawer(); closeCheckout(); hideInfo(); hidePoster(); } });
 $('#year').textContent = new Date().getFullYear();
 
 /* Count-up numbers */
@@ -589,6 +601,12 @@ const io = new IntersectionObserver(entries=>{
   });
 },{threshold:.5});
 $$('.count').forEach(el=>io.observe(el));
+
+/* Poster popup: shown on page load */
+function hidePoster(){ const m=document.getElementById('poster-modal'); if(!m) return; m.classList.add('hidden'); m.classList.remove('flex'); }
+(function(){ const m=$('#poster-modal'); if(!m) return; m.classList.remove('hidden'); m.classList.add('flex');
+  $('#poster-close').onclick = hidePoster;
+  m.addEventListener('click', e=>{ if(e.target.id==='poster-modal') hidePoster(); }); })();
 
 renderCart(); icons();
 </script>
