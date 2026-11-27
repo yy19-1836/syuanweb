@@ -33,6 +33,22 @@
   @keyframes bounce{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 8px))}}
   .img-fallback{background:linear-gradient(135deg,#e9dccd,#b58a63)}
   ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#b58a63;border-radius:8px}
+  /* Crowd animation (hero) */
+  .crowd{position:absolute;left:0;right:0;bottom:0;height:9rem;pointer-events:none;overflow:hidden}
+  .crowd::after{content:"";position:absolute;left:0;right:0;bottom:1.1rem;height:1px;background:linear-gradient(90deg,transparent,rgba(240,154,82,.45),transparent)}
+  .walker{position:absolute;bottom:1.1rem;left:-80px;animation:walk-ltr linear infinite}
+  .walker.rtl{animation-name:walk-rtl}
+  .walker.rtl .walker-body{transform:scaleX(-1)}
+  .walker-bob{animation:bob .5s ease-in-out infinite alternate}
+  .walker svg{display:block;overflow:visible}
+  .walker .leg-a,.walker .arm-b{transform-origin:20px 45px;animation:swing .5s ease-in-out infinite alternate}
+  .walker .leg-b,.walker .arm-a{transform-origin:20px 45px;animation:swing .5s ease-in-out infinite alternate-reverse}
+  .walker .arm-a,.walker .arm-b{transform-origin:20px 22px}
+  @keyframes walk-ltr{from{left:-80px}to{left:calc(100% + 80px)}}
+  @keyframes walk-rtl{from{left:calc(100% + 80px)}to{left:-80px}}
+  @keyframes swing{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+  @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+  @media (prefers-reduced-motion:reduce){.crowd{display:none}}
 </style>
 </head>
 <body class="font-sans antialiased">
@@ -83,6 +99,7 @@
 <section class="relative min-h-[100svh] flex items-center pt-16 overflow-hidden bg-wood-900">
   <img src="https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=1920&q=80" alt="金黃酥脆的鍋貼" class="absolute inset-0 w-full h-full object-cover opacity-45" onerror="this.style.display='none'">
   <div class="absolute inset-0 bg-gradient-to-r from-wood-900 via-wood-900/70 to-transparent"></div>
+  <div id="crowd" class="crowd" aria-hidden="true"></div>
   <div class="relative max-w-7xl mx-auto px-4 lg:px-8 py-20 w-full">
     <p class="inline-flex items-center gap-2 text-ember-400 tracking-[.3em] text-xs sm:text-sm mb-6"><span class="w-10 h-px bg-ember-400"></span>SINCE 1995 · 現包現煎</p>
     <h1 class="font-serif font-black text-cream text-4xl sm:text-5xl lg:text-7xl leading-tight max-w-3xl">金黃酥脆，<br>傳承手藝的<span class="text-ember-400">極致美味</span></h1>
@@ -607,6 +624,32 @@ function hidePoster(){ const m=document.getElementById('poster-modal'); if(!m) r
 (function(){ const m=$('#poster-modal'); if(!m) return; m.classList.remove('hidden'); m.classList.add('flex');
   $('#poster-close').onclick = hidePoster;
   m.addEventListener('click', e=>{ if(e.target.id==='poster-modal') hidePoster(); }); })();
+
+/* Crowd animation: people walking past the shop */
+(function(){
+  const box = $('#crowd'); if(!box) return;
+  const colors = ['#faf4e8','#e9dccd','#b58a63','#f09a52','#e9dccd','#7a4b2b'];
+  const person = (c, bag) => `<svg width="40" height="80" viewBox="0 0 40 80" fill="${c}">
+    <rect class="arm-a" x="17.5" y="20" width="5" height="22" rx="2.5"/>
+    <rect class="leg-a" x="17" y="44" width="6" height="32" rx="3"/>
+    <rect class="leg-b" x="17" y="44" width="6" height="32" rx="3"/>
+    <rect x="13" y="18" width="14" height="30" rx="6"/>
+    <circle cx="20" cy="9" r="7"/>
+    <g class="arm-b"><rect x="17.5" y="20" width="5" height="22" rx="2.5"/>${bag?'<rect x="14" y="40" width="13" height="10" rx="2" fill="#e07a2f"/>':''}</g>
+  </svg>`;
+  const n = window.innerWidth < 640 ? 7 : 14;
+  for(let i=0;i<n;i++){
+    const w = document.createElement('div');
+    const scale = (0.55 + Math.random()*0.6).toFixed(2), dur = (14 + Math.random()*16).toFixed(1);
+    w.className = 'walker' + (Math.random()<.5 ? ' rtl' : '');
+    w.style.animationDuration = dur + 's';
+    w.style.animationDelay = (-Math.random()*dur).toFixed(1) + 's';
+    w.style.opacity = (0.35 + scale*0.45).toFixed(2);
+    w.style.zIndex = Math.round(scale*10);
+    w.innerHTML = `<div class="walker-body" style="transform-origin:bottom"><div class="walker-bob" style="zoom:${scale}">${person(colors[i%colors.length], Math.random()<.4)}</div></div>`;
+    box.appendChild(w);
+  }
+})();
 
 renderCart(); icons();
 </script>
