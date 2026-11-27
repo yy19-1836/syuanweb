@@ -97,8 +97,16 @@ function validate_(d) {
   return o;
 }
 
+function seedMenu_(sh) {
+  if (sh.getLastRow() >= 2) return;
+  sh.getRange(2, 1, DEFAULT_MENU.length, 4).setValues(DEFAULT_MENU.map(r => [...r, true]));
+  sh.getRange(2, 4, DEFAULT_MENU.length, 1).insertCheckboxes();
+}
+
 function getMenu_() {
-  const sh = ensureSheets_().menu, rows = sh.getDataRange().getValues().slice(1), menu = {};
+  const sh = ensureSheets_().menu;
+  seedMenu_(sh); // 「菜單」是空的（例如還沒執行 setup）時，自動填入預設菜單
+  const rows = sh.getDataRange().getValues().slice(1), menu = {};
   rows.forEach(r => {
     const id = String(r[0]).trim(), price = Number(r[2]), on = r[3] === true || String(r[3]).toUpperCase() === 'TRUE';
     if (id && price > 0 && on) menu[id] = { name: String(r[1]), price };
@@ -212,10 +220,7 @@ function ensureSheets_() {
 /** 第一次部署前請在編輯器執行一次：建立工作表、菜單、格式與觸發器 */
 function setup() {
   const s = ensureSheets_();
-  if (s.menu.getLastRow() < 2) {
-    s.menu.getRange(2, 1, DEFAULT_MENU.length, 4).setValues(DEFAULT_MENU.map(r => [...r, true]));
-    s.menu.getRange(2, 4, DEFAULT_MENU.length, 1).insertCheckboxes();
-  }
+  seedMenu_(s.menu);
   const o = s.orders;
   o.getRange('B:B').setNumberFormat('yyyy/mm/dd hh:mm');
   o.getRange('K:M').setNumberFormat('"NT$"#,##0');
